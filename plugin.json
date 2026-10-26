@@ -1,0 +1,23 @@
+{
+  "slug": "Zemun",
+  "name": "Zemun",
+  "version": "2.0.0",
+  "license": "proprietary",
+  "brand": "Zemun",
+  "author": "Beto",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "Zemun",
+      "name": "Zemun",
+      "description": "Dual peak multimode state variable filter: two cores, ten responses, span, balance and audio-rate self/cross modulation",
+      "tags": ["Filter", "Polyphonic", "Distortion"]
+    }
+  ]
+}
