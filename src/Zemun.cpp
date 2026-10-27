@@ -4,6 +4,7 @@
 #include <rack.hpp>
 #include "Filter.hpp"
 #include "Controls4ms.hpp"
+#include "Stencil.hpp"
 
 using namespace rack;
 
@@ -99,54 +100,15 @@ struct Zemun : Module {
 };
 
 // ---------------------------------------------------------------- themes
-// "Bone" (light) and "Slate" (dark); one accent, crimson. See docs/art/STYLE.md.
-struct ZTheme {
-	NVGcolor panel, ink, grey, frame, group, plate, plateInk, plateLine, accent;
-};
+// betobullet stencil (docs/art/STYLE.md): theme 0 = black panel, 1 = white panel
+using bb::THEME_NAMES;
 static const int NUM_THEMES = 2;
-static const char* const THEME_NAMES[NUM_THEMES] = {"Bone", "Slate"};
-
-static ZTheme zTheme(int t) {
-	ZTheme k;
-	if (t == 1) {
-		k.panel = nvgRGB(0x17, 0x19, 0x1B);
-		k.ink = nvgRGB(0xE6, 0xE8, 0xE8);
-		k.grey = nvgRGB(0x8A, 0x8D, 0x93);
-		k.frame = nvgRGB(0x6B, 0x6F, 0x75);
-		k.group = nvgRGB(0x1E, 0x21, 0x24);
-		k.plate = nvgRGB(0x0E, 0x11, 0x13);
-		k.plateInk = nvgRGB(0xE6, 0xE8, 0xE8);
-		k.plateLine = nvgRGB(0x6B, 0x6F, 0x75);
-		k.accent = nvgRGB(0xE2, 0x44, 0x5A);
-	}
-	else {
-		k.panel = nvgRGB(0xE8, 0xE6, 0xE1);
-		k.ink = nvgRGB(0x0F, 0x12, 0x16);
-		k.grey = nvgRGB(0x6E, 0x71, 0x77);
-		k.frame = nvgRGB(0x0F, 0x12, 0x16);
-		k.group = nvgRGB(0xF3, 0xF1, 0xEC);
-		k.plate = nvgRGB(0x1B, 0x1E, 0x24);
-		k.plateInk = nvgRGB(0xF6, 0xF4, 0xEF);
-		k.plateLine = nvgRGB(0x1B, 0x1E, 0x24);
-		k.accent = nvgRGB(0xC8, 0x10, 0x2E);
-	}
-	return k;
-}
 
 namespace fms {
 const Colors& colors(const engine::Module* m) {
-	static const Colors bone = {
-		nvgRGB(0x11, 0x11, 0x11), nvgRGB(0x3A, 0x3A, 0x3A), nvgRGB(0xF6, 0xF4, 0xEF), nvgRGB(0x0F, 0x12, 0x16),
-		nvgRGB(0xD3, 0xD3, 0xD0), nvgRGB(0xF7, 0xF7, 0xF5), nvgRGB(0x8E, 0x8E, 0x8A), nvgRGB(0x5C, 0x5C, 0x5A), nvgRGB(0x05, 0x05, 0x05),
-		nvgRGB(0xF4, 0xF2, 0xEA), nvgRGB(0xFF, 0xFF, 0xFF), nvgRGB(0xE0, 0x1E, 0x3C), nvgRGB(0xFF, 0x7A, 0x8C), nvgRGB(0x0F, 0x12, 0x16),
-		nvgRGB(0xFB, 0xFB, 0xF9)};
-	static const Colors slate = {
-		nvgRGB(0x0B, 0x0B, 0x0D), nvgRGB(0x3A, 0x3B, 0x3F), nvgRGB(0xF6, 0xF4, 0xEF), nvgRGB(0xE6, 0xE8, 0xE8),
-		nvgRGB(0xD3, 0xD3, 0xD0), nvgRGB(0xF7, 0xF7, 0xF5), nvgRGB(0x8E, 0x8E, 0x8A), nvgRGB(0x5C, 0x5C, 0x5A), nvgRGB(0x05, 0x05, 0x05),
-		nvgRGB(0xE6, 0xE8, 0xE8), nvgRGB(0xFF, 0xFF, 0xFF), nvgRGB(0xE2, 0x44, 0x5A), nvgRGB(0xFF, 0x9A, 0xA8), nvgRGB(0x6B, 0x6F, 0x75),
-		nvgRGB(0xFB, 0xFB, 0xF9)};
+	static const Colors black = bb::controlColors(0), white = bb::controlColors(1);
 	int t = m ? static_cast<const Zemun*>(m)->theme : 0;
-	return t == 1 ? slate : bone;
+	return t == 1 ? white : black;
 }
 }  // namespace fms
 
@@ -178,31 +140,7 @@ static Vec polar(Vec c, float angle, float r) {
 }
 
 // ---------------------------------------------------------------- widgets
-/** The logotype, one SVG per theme (bone / slate). */
-struct LogoWidget : TransparentWidget {
-	Zemun* module = nullptr;
-	std::shared_ptr<window::Svg> svg[2];
-
-	void load(float widthMm) {
-		svg[0] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_bone.svg"));
-		svg[1] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_slate.svg"));
-		float w = svg[0]->handle->width, h = svg[0]->handle->height;
-		box.size = Vec(mm2px(widthMm), mm2px(widthMm) * h / w);
-	}
-
-	void draw(const DrawArgs& args) override {
-		int i = (module && module->theme == 1) ? 1 : 0;
-		if (!svg[i])
-			return;
-		float sc = box.size.x / svg[i]->handle->width;
-		nvgSave(args.vg);
-		nvgScale(args.vg, sc, sc);
-		window::svgDraw(args.vg, svg[i]->handle);
-		nvgRestore(args.vg);
-	}
-};
-
-/** Panel background, groups, scales and every label. Drawn in code so the theme can change. */
+/** Panel background, frames, scales and every label. Drawn in code so the theme can change. */
 struct PanelArt : Widget {
 	Zemun* module = nullptr;
 
@@ -210,49 +148,29 @@ struct PanelArt : Widget {
 		nvgText(vg, mm2px(mm.x), mm2px(mm.y), s, NULL);
 	}
 
-	void pill(NVGcontext* vg, Vec mm, const char* s, float sizeMm, const ZTheme& k) {
-		float w = nvgTextBounds(vg, 0, 0, s, NULL, NULL);
-		float h = mm2px(sizeMm) * 1.25f;
-		nvgBeginPath(vg);
-		nvgRoundedRect(vg, mm2px(mm.x) - w / 2 - h * 0.45f, mm2px(mm.y) - h / 2, w + h * 0.9f, h, h / 2);
-		nvgFillColor(vg, k.plate);
-		nvgFill(vg);
-		nvgFillColor(vg, k.plateInk);
-		text(vg, mm, s);
-	}
-
 	void draw(const DrawArgs& args) override {
-		ZTheme k = zTheme(module ? module->theme : 0);
+		bb::Ink k = bb::ink(module ? module->theme : 0);
+		bb::Ink inv = {k.fg, k.bg};
 		NVGcontext* vg = args.vg;
 		nvgBeginPath(vg);
 		nvgRect(vg, 0, 0, box.size.x, box.size.y);
-		nvgFillColor(vg, k.panel);
+		nvgFillColor(vg, k.bg);
 		nvgFill(vg);
 
-		// the jack field in one rounded group, the output on a dark plate
-		nvgBeginPath(vg);
-		nvgRoundedRect(vg, mm2px(2.4f), mm2px(95.2f), mm2px(W - 4.8f), mm2px(26.6f), mm2px(3.0f));
-		nvgFillColor(vg, k.group);
+		// the frequency knob in brackets, the jack field framed, the output on a solid plate
+		bb::bracketFrame(vg, Rect(FREQ_POS.minus(Vec(FREQ_R + 7.6f, FREQ_R + 7.6f)), Vec(2 * FREQ_R + 15.2f, 2 * FREQ_R + 19.4f)), k, 3.0f);
+		bb::notchedFrame(vg, Rect(Vec(2.4f, 95.2f), Vec(W - 4.8f, 26.6f)), k);
+		bb::chamferPath(vg, Rect(Vec(42.2f, 107.6f), Vec(14.0f, 13.4f)), 1.8f);
+		nvgFillColor(vg, k.fg);
 		nvgFill(vg);
-		nvgStrokeColor(vg, k.frame);
-		nvgStrokeWidth(vg, mm2px(0.35f));
-		nvgStroke(vg);
-		nvgBeginPath(vg);
-		nvgRoundedRect(vg, mm2px(42.2f), mm2px(107.6f), mm2px(14.0f), mm2px(13.4f), mm2px(2.6f));
-		nvgFillColor(vg, k.plate);
-		nvgFill(vg);
-		if (module && module->theme == 1) {
-			nvgStrokeColor(vg, k.plateLine);
-			nvgStrokeWidth(vg, mm2px(0.3f));
-			nvgStroke(vg);
-		}
+		bb::bullets(vg, 19.0f, 52.1f, 93.6f, 2.0f, 9, k);
 
 		// position dots of the mode switch
 		for (int i = 0; i < zemun::NUM_MODES; i++) {
 			Vec d = polar(MODE_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 9.f, MODE_R + 2.0f);
 			nvgBeginPath(vg);
-			nvgCircle(vg, mm2px(d.x), mm2px(d.y), mm2px(0.45f));
-			nvgFillColor(vg, k.ink);
+			nvgRect(vg, mm2px(d.x - 0.45f), mm2px(d.y - 0.45f), mm2px(0.9f), mm2px(0.9f));
+			nvgFillColor(vg, k.fg);
 			nvgFill(vg);
 		}
 
@@ -264,23 +182,25 @@ struct PanelArt : Widget {
 				float y = SLIDER_BOTTOM - 2.4f - (SLIDER_BOTTOM - SLIDER_TOP - 4.8f) * i / 10.f;
 				nvgBeginPath(vg);
 				nvgMoveTo(vg, mm2px(x + side * 3.4f), mm2px(y));
-				nvgLineTo(vg, mm2px(x + side * (i % 2 == 0 ? 4.6f : 4.0f)), mm2px(y));
-				nvgStrokeColor(vg, k.ink);
-				nvgStrokeWidth(vg, mm2px(0.25f));
+				nvgLineTo(vg, mm2px(x + side * (i % 2 == 0 ? 4.8f : 4.0f)), mm2px(y));
+				nvgStrokeColor(vg, k.fg);
+				nvgStrokeWidth(vg, mm2px(i % 5 == 0 ? 0.45f : 0.28f));
 				nvgStroke(vg);
 			}
 		}
 
+		std::shared_ptr<window::Font> stencil = pluginFont("BlackOpsOne-Regular.ttf");
 		std::shared_ptr<window::Font> reg = pluginFont("SpaceMono-Regular.ttf");
 		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
-		if (!reg || !bold)
+		if (!stencil || !reg || !bold)
 			return;
+		bb::title(vg, Rect(Vec(14.0f, 1.4f), Vec(W - 28.0f, 6.4f)), "ZEMUN", stencil->handle, k, 4.8f);
 		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+		nvgFillColor(vg, k.fg);
 
-		// slider numbers
+		// slider numbers and the numbers around the frequency knob
 		nvgFontFaceId(vg, reg->handle);
 		nvgFontSize(vg, mm2px(2.2f));
-		nvgFillColor(vg, k.ink);
 		for (int s = 0; s < 2; s++) {
 			float x = s == 0 ? FM_SLIDER_X - 6.4f : SPAN_SLIDER_X + 6.4f;
 			for (int i = 0; i <= 10; i += 2) {
@@ -288,8 +208,6 @@ struct PanelArt : Widget {
 				text(vg, Vec(x, y), string::f("%d", i).c_str());
 			}
 		}
-
-		// numbers around the frequency knob
 		nvgFontSize(vg, mm2px(2.4f));
 		for (int i = 0; i <= 10; i++) {
 			Vec p = polar(FREQ_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 10.f, FREQ_R + 5.2f);
@@ -304,36 +222,32 @@ struct PanelArt : Widget {
 			text(vg, p, zemun::MODE_NAMES[i]);
 		}
 
-		// knob and jack labels
-		nvgFontFaceId(vg, reg->handle);
-		nvgFontSize(vg, mm2px(3.0f));
-		text(vg, Vec(LEVEL_POS.x, 31.0f), "LEVEL");
-		text(vg, Vec(SPAN_POS.x, 31.0f), "SPAN");
-		text(vg, Vec(RESO_POS.x, 68.0f), "RESO");
-		text(vg, Vec(BAL_POS.x, 68.0f), "BALANCE");
-		text(vg, Vec(RESO_IN.x, RESO_IN.y + 5.2f), "RESO");
-		text(vg, Vec(VOCT_IN.x, VOCT_IN.y + 5.2f), "V/OCT");
-		text(vg, Vec(BAL_IN.x, BAL_IN.y + 5.2f), "BALANCE");
-		text(vg, Vec(FM_IN.x, FM_IN.y + 5.2f), "FM");
-		text(vg, Vec(AUDIO_IN.x, AUDIO_IN.y + 5.2f), "INPUT");
-		text(vg, Vec(SPAN_IN.x, SPAN_IN.y + 5.2f), "SPAN");
-		nvgFillColor(vg, k.plateInk);
-		text(vg, Vec(OUT_POS.x, OUT_POS.y + 5.2f), "OUTPUT");
+		// knob and jack labels on stencil plates
+		nvgFontFaceId(vg, stencil->handle);
+		nvgFontSize(vg, mm2px(2.4f));
+		nvgTextLetterSpacing(vg, mm2px(0.08f));
+		bb::plate(vg, Vec(LEVEL_POS.x, 31.0f), "LEVEL", k, 11.0f);
+		bb::plate(vg, Vec(SPAN_POS.x, 31.0f), "SPAN", k, 11.0f);
+		bb::plate(vg, Vec(RESO_POS.x, 68.0f), "RESO", k, 11.0f);
+		bb::plate(vg, Vec(BAL_POS.x, 68.0f), "BALANCE", k, 11.0f);
+		bb::plate(vg, Vec(RESO_IN.x, RESO_IN.y + 5.2f), "RESO", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(VOCT_IN.x, VOCT_IN.y + 5.2f), "V/OCT", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(BAL_IN.x, BAL_IN.y + 5.2f), "BAL", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(FM_IN.x, FM_IN.y + 5.2f), "FM", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(AUDIO_IN.x, AUDIO_IN.y + 5.2f), "INPUT", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(SPAN_IN.x, SPAN_IN.y + 5.2f), "SPAN", k, 9.0f, 2.8f);
+		bb::plate(vg, Vec(OUT_POS.x, OUT_POS.y + 5.2f), "OUTPUT", inv, 11.0f, 2.8f);
+		bb::plate(vg, Vec(TITO_POS.x, 38.0f), "TITO", k, 8.0f, 2.8f);
+		bb::plate(vg, Vec(FREQ_POS.x, 56.6f), "FREQ", k, 12.0f, 3.4f);
+		bb::plate(vg, Vec(MODE_POS.x, 87.4f), "MODE", k, 12.0f, 3.4f);
+		nvgTextLetterSpacing(vg, 0.f);
 
-		// TITO switch
-		nvgFillColor(vg, k.ink);
-		nvgFontSize(vg, mm2px(2.6f));
-		text(vg, Vec(TITO_POS.x, 38.0f), "TITO");
+		nvgFontFaceId(vg, bold->handle);
+		nvgFontSize(vg, mm2px(2.4f));
+		nvgFillColor(vg, k.fg);
 		nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
 		text(vg, Vec(TITO_POS.x + 4.4f, TITO_POS.y - 2.6f), "SM");
 		text(vg, Vec(TITO_POS.x + 4.4f, TITO_POS.y + 2.6f), "XM");
-		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-
-		// pills under the two big controls
-		nvgFontFaceId(vg, bold->handle);
-		nvgFontSize(vg, mm2px(2.8f));
-		pill(vg, Vec(FREQ_POS.x, 56.6f), "FREQ", 2.8f, k);
-		pill(vg, Vec(MODE_POS.x, 87.4f), "MODE", 2.8f, k);
 	}
 };
 
@@ -352,11 +266,6 @@ struct ZemunWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		LogoWidget* logo = new LogoWidget;
-		logo->module = module;
-		logo->load(26.0f);
-		logo->box.pos = Vec((box.size.x - logo->box.size.x) / 2, mm2px(3.0f));
-		addChild(logo);
 
 		addParam(fms::knob(mm2px(LEVEL_POS), module, Zemun::LEVEL_PARAM, KNOB_R));
 		addParam(fms::knob(mm2px(SPAN_POS), module, Zemun::SPAN_PARAM, KNOB_R));
