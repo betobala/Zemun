@@ -184,8 +184,8 @@ struct PanelArt : Widget {
 		}
 
 		std::shared_ptr<window::Font> stencil = pluginFont("BlackOpsOne-Regular.ttf");
-		std::shared_ptr<window::Font> reg = pluginFont("SpaceMono-Regular.ttf");
-		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
+		std::shared_ptr<window::Font> reg = pluginFont("BebasNeue-Regular.ttf");
+		std::shared_ptr<window::Font> bold = pluginFont("BebasNeue-Regular.ttf");
 		if (!stencil || !reg || !bold)
 			return;
 		bb::nameplate(vg, CX, 4.4f, "ZEMUN", stencil->handle, k, 4.6f);
@@ -193,7 +193,7 @@ struct PanelArt : Widget {
 
 		// scale numbers in grey
 		nvgFontFaceId(vg, reg->handle);
-		nvgFontSize(vg, mm2px(2.2f));
+		nvgFontSize(vg, mm2px(4.4f));
 		nvgFillColor(vg, k.dim);
 		for (int s = 0; s < 2; s++) {
 			float x = s == 0 ? FM_SLIDER_X - 6.4f : SPAN_SLIDER_X + 6.4f;
@@ -202,7 +202,7 @@ struct PanelArt : Widget {
 				text(vg, Vec(x, y), string::f("%d", i).c_str());
 			}
 		}
-		nvgFontSize(vg, mm2px(2.4f));
+		nvgFontSize(vg, mm2px(4.8f));
 		for (int i = 0; i <= 10; i++) {
 			Vec p = polar(FREQ_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 10.f, FREQ_R + 5.2f);
 			text(vg, p, string::f("%d", i).c_str());
@@ -210,7 +210,7 @@ struct PanelArt : Widget {
 
 		// mode names
 		nvgFontFaceId(vg, bold->handle);
-		nvgFontSize(vg, mm2px(2.6f));
+		nvgFontSize(vg, mm2px(5.2f));
 		nvgFillColor(vg, k.fg);
 		for (int i = 0; i < zemun::NUM_MODES; i++) {
 			Vec p = polar(MODE_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 9.f, MODE_R + 5.6f);
@@ -218,7 +218,7 @@ struct PanelArt : Widget {
 		}
 
 		// labels
-		nvgFontSize(vg, mm2px(2.7f));
+		nvgFontSize(vg, mm2px(5.4f));
 		nvgTextLetterSpacing(vg, mm2px(0.1f));
 		bb::label(vg, Vec(LEVEL_POS.x, 31.0f), "LEVEL", k.fg);
 		bb::label(vg, Vec(SPAN_POS.x, 31.0f), "SPAN", k.fg);
@@ -227,17 +227,17 @@ struct PanelArt : Widget {
 		bb::label(vg, Vec(FREQ_POS.x, 56.6f), "FREQ", k.fg);
 		bb::label(vg, Vec(MODE_POS.x, 87.4f), "MODE", k.fg);
 		bb::label(vg, Vec(TITO_POS.x, 38.0f), "TITO", k.fg);
-		nvgFontSize(vg, mm2px(2.4f));
+		nvgFontSize(vg, mm2px(4.8f));
 		bb::label(vg, Vec(RESO_IN.x, RESO_IN.y + 5.2f), "RESO", k.fg);
 		bb::label(vg, Vec(VOCT_IN.x, VOCT_IN.y + 5.2f), "V/OCT", k.fg);
 		bb::label(vg, Vec(BAL_IN.x, BAL_IN.y + 5.2f), "BAL", k.fg);
 		bb::label(vg, Vec(FM_IN.x, FM_IN.y + 5.2f), "FM", k.fg);
 		bb::label(vg, Vec(AUDIO_IN.x, AUDIO_IN.y + 5.2f), "INPUT", k.fg);
 		bb::label(vg, Vec(SPAN_IN.x, SPAN_IN.y + 5.2f), "SPAN", k.fg);
-		bb::label(vg, Vec(OUT_POS.x, OUT_POS.y + 6.0f), "OUTPUT", k.red);
+		bb::label(vg, Vec(OUT_POS.x, OUT_POS.y + 7.0f), "OUTPUT", k.red);
 		nvgTextLetterSpacing(vg, 0.f);
 
-		nvgFontSize(vg, mm2px(2.3f));
+		nvgFontSize(vg, mm2px(4.6f));
 		nvgFillColor(vg, k.dim);
 		nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
 		text(vg, Vec(TITO_POS.x + 4.4f, TITO_POS.y - 2.6f), "SM");
