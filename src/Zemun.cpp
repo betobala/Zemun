@@ -4,6 +4,7 @@
 #include <rack.hpp>
 #include "Filter.hpp"
 #include "Controls.hpp"
+#define BB_MODULE_COLOUR nvgRGB(0x5E, 0x8C, 0x5A)
 #include "Stencil.hpp"
 
 using namespace rack;
@@ -95,20 +96,20 @@ struct Zemun : Module {
 
 	void dataFromJson(json_t* root) override {
 		if (json_t* t = json_object_get(root, "theme"))
-			theme = clamp((int) json_integer_value(t), 0, 1);
+			theme = clamp((int) json_integer_value(t), 0, 3);
 	}
 };
 
 // ---------------------------------------------------------------- themes
 // betobullet stencil (docs/art/STYLE.md): theme 0 = black panel, 1 = white panel
 using bb::THEME_NAMES;
-static const int NUM_THEMES = 2;
+using bb::NUM_THEMES;
 
 namespace fms {
 const Colors& colors(const engine::Module* m) {
-	static const Colors black = bb::controlColors(0), white = bb::controlColors(1);
+	static const Colors themes[4] = {bb::controlColors(0), bb::controlColors(1), bb::controlColors(2), bb::controlColors(3)};
 	int t = m ? static_cast<const Zemun*>(m)->theme : 0;
-	return t == 1 ? white : black;
+	return themes[t < 0 || t > 3 ? 0 : t];
 }
 }  // namespace fms
 

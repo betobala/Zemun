@@ -8,30 +8,75 @@
 namespace bb {
 using namespace rack;
 
-/** The two inks of a theme: 0 = black panel (main), 1 = white panel (inverse). */
+// Each plugin may define BB_MODULE_COLOUR (its panel colour in the "Colour" theme) before
+// including this file.
+#ifndef BB_MODULE_COLOUR
+#define BB_MODULE_COLOUR nvgRGB(0x4A, 0x58, 0x66)
+#endif
+
+/** Theme colours. 0 = Colour (one colour per module, the default), 1 = White, 2 = Navy & brass, 3 = Black. */
 struct Ink {
 	NVGcolor bg, fg;
-	NVGcolor red, dim;  // the accent; secondary text and rules
+	NVGcolor red, dim;          // the accent (outputs, lit things); secondary text and rules
+	NVGcolor knob, knobEdge, pointer;
 };
+
+static const int NUM_THEMES = 4;
+static const char* const THEME_NAMES[NUM_THEMES] = {"Colour", "White", "Navy & brass", "Black"};
+
+inline NVGcolor mixc(NVGcolor a, NVGcolor b, float t) {
+	return nvgRGBAf(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1.f);
+}
+
+/** BB_PREVIEW_THEME (environment) replaces the default theme 0, for rendering previews. */
+inline int effectiveTheme(int theme) {
+	if (theme == 0) {
+		if (const char* e = std::getenv("BB_PREVIEW_THEME"))
+			return std::atoi(e);
+	}
+	return theme;
+}
 
 inline Ink ink(int theme) {
 	Ink k;
-	if (theme == 1) {
-		k.bg = nvgRGB(0xF1, 0xF1, 0xEE);
-		k.fg = nvgRGB(0x0B, 0x0B, 0x0B);
-		k.red = nvgRGB(0xD0, 0x1E, 0x25);
-		k.dim = nvgRGB(0x8C, 0x8C, 0x8A);
-	}
-	else {
-		k.bg = nvgRGB(0x0E, 0x0E, 0x0E);
-		k.fg = nvgRGB(0xF1, 0xF1, 0xEE);
-		k.red = nvgRGB(0xE8, 0x2A, 0x2F);
-		k.dim = nvgRGB(0x5E, 0x5E, 0x5C);
+	k.knob = nvgRGB(0x14, 0x14, 0x14);
+	k.knobEdge = nvgRGB(0x30, 0x30, 0x30);
+	k.pointer = nvgRGB(0xF4, 0xF4, 0xF2);
+	switch (effectiveTheme(theme)) {
+		case 1:
+			k.bg = nvgRGB(0xF1, 0xF1, 0xEE);
+			k.fg = nvgRGB(0x0B, 0x0B, 0x0B);
+			k.red = nvgRGB(0xD0, 0x1E, 0x25);
+			k.dim = nvgRGB(0x8C, 0x8C, 0x8A);
+			break;
+		case 2:  // navy anodised, brass print and caps
+			k.bg = nvgRGB(0x13, 0x20, 0x3A);
+			k.fg = nvgRGB(0xD9, 0xB8, 0x6A);
+			k.red = nvgRGB(0xF2, 0xC1, 0x4E);
+			k.dim = nvgRGB(0x5A, 0x67, 0x82);
+			k.knob = nvgRGB(0xC9, 0xA4, 0x4F);
+			k.knobEdge = nvgRGB(0x8E, 0x72, 0x30);
+			k.pointer = nvgRGB(0x13, 0x20, 0x3A);
+			break;
+		case 0: {  // the module's own colour, white (or black) print, white caps
+			k.bg = BB_MODULE_COLOUR;
+			float lum = 0.2126f * k.bg.r + 0.7152f * k.bg.g + 0.0722f * k.bg.b;
+			k.fg = lum > 0.55f ? nvgRGB(0x16, 0x16, 0x16) : nvgRGB(0xF6, 0xF4, 0xEE);
+			k.red = k.fg;
+			k.dim = mixc(k.bg, k.fg, 0.45f);
+			k.knob = nvgRGB(0xF2, 0xF1, 0xEC);
+			k.knobEdge = nvgRGB(0xC8, 0xC6, 0xC0);
+			k.pointer = nvgRGB(0x11, 0x11, 0x11);
+			break;
+		}
+		default:  // 3: black
+			k.bg = nvgRGB(0x0E, 0x0E, 0x0E);
+			k.fg = nvgRGB(0xF1, 0xF1, 0xEE);
+			k.red = nvgRGB(0xE8, 0x2A, 0x2F);
+			k.dim = nvgRGB(0x5E, 0x5E, 0x5C);
 	}
 	return k;
 }
-
-static const char* const THEME_NAMES[2] = {"Black", "White"};
 
 inline float px(float mm) {
 	return mm2px(mm);
@@ -154,9 +199,9 @@ inline void bullets(NVGcontext* vg, float x0, float x1, float baseMm, float h, i
 inline fms::Colors controlColors(int theme) {
 	Ink k = ink(theme);
 	fms::Colors c = {
-		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x30, 0x30, 0x30), nvgRGB(0xF4, 0xF4, 0xF2), k.dim,
+		k.knob, k.knobEdge, k.pointer, k.dim,
 		nvgRGB(0xB8, 0xB8, 0xB6), nvgRGB(0xE4, 0xE4, 0xE2), nvgRGB(0x50, 0x50, 0x50), nvgRGB(0x1C, 0x1C, 0x1C), nvgRGB(0x04, 0x04, 0x04),
-		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x34, 0x34, 0x34), k.red, nvgRGB(0xFF, 0x6A, 0x6E), k.dim,
+		k.knob, k.knobEdge, k.red, mixc(k.red, nvgRGB(0xFF, 0xFF, 0xFF), 0.4f), k.dim,
 		nvgRGB(0xF4, 0xF4, 0xF2)};
 	return c;
 }
