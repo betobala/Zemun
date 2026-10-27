@@ -210,18 +210,171 @@ inline void outRing(NVGcontext* vg, Vec mm, const Ink& k, float r = 4.3f) {
 	nvgStroke(vg);
 }
 
-/** Module name at the top: stencil type, with a short red bar under it. */
-inline void nameplate(NVGcontext* vg, float cxMm, float yMm, const char* name, int fontHandle, const Ink& k, float sizeMm) {
+/** The graphic mark of each module's logo, drawn under (or beside) its name. */
+enum Mark { MARK_NONE, MARK_BAR, MARK_PEAKS, MARK_BRAID, MARK_PULSES, MARK_ENVELOPE, MARK_SAWS, MARK_DOTS, MARK_OCTOPUS, MARK_DELTA };
+
+inline void strokePath(NVGcontext* vg, NVGcolor c, float wMm) {
+	nvgStrokeColor(vg, c);
+	nvgStrokeWidth(vg, px(wMm));
+	nvgLineCap(vg, NVG_ROUND);
+	nvgLineJoin(vg, NVG_ROUND);
+	nvgStroke(vg);
+}
+
+/** Draws mark m in the band x0..x1 (px), top y0, height h (px). */
+inline void drawMark(NVGcontext* vg, Mark m, float x0, float x1, float y0, float h, const Ink& k) {
+	float w = x1 - x0;
+	switch (m) {
+		case MARK_PEAKS: {  // the two-peak response of the filter
+			nvgBeginPath(vg);
+			for (int i = 0; i <= 80; i++) {
+				float u = i / 80.f;
+				float v = 0.95f * std::exp(-std::pow((u - 0.3f) / 0.075f, 2.f)) + 0.7f * std::exp(-std::pow((u - 0.72f) / 0.075f, 2.f));
+				float x = x0 + w * u, y = y0 + h * (0.8f - 0.75f * v);
+				if (i == 0)
+					nvgMoveTo(vg, x, y);
+				else
+					nvgLineTo(vg, x, y);
+			}
+			strokePath(vg, k.red, 0.7f);
+			nvgBeginPath(vg);
+			nvgMoveTo(vg, x0, y0 + h);
+			nvgLineTo(vg, x1, y0 + h);
+			strokePath(vg, k.dim, 0.3f);
+			break;
+		}
+		case MARK_BRAID: {  // four LFO phases braided, one in red
+			for (int p = 3; p >= 0; p--) {
+				nvgBeginPath(vg);
+				for (int i = 0; i <= 80; i++) {
+					float u = i / 80.f;
+					float y = y0 + h * (0.5f - 0.45f * std::sin(2.f * M_PI * (2.f * u) + p * M_PI / 2.f));
+					if (i == 0)
+						nvgMoveTo(vg, x0 + w * u, y);
+					else
+						nvgLineTo(vg, x0 + w * u, y);
+				}
+				strokePath(vg, p == 0 ? k.red : (p == 2 ? k.fg : k.dim), 0.55f);
+			}
+			break;
+		}
+		case MARK_PULSES: {  // a gate train: the pulses that pass in red, the skipped ones short and grey
+			static const int pass[7] = {1, 0, 1, 1, 0, 0, 1};
+			for (int i = 0; i < 7; i++) {
+				float x = x0 + w * (i + 0.5f) / 7.f;
+				nvgBeginPath(vg);
+				nvgMoveTo(vg, x, y0 + h);
+				nvgLineTo(vg, x, pass[i] ? y0 : y0 + h * 0.7f);
+				strokePath(vg, pass[i] ? k.red : k.dim, 0.75f);
+			}
+			nvgBeginPath(vg);
+			nvgMoveTo(vg, x0, y0 + h);
+			nvgLineTo(vg, x1, y0 + h);
+			strokePath(vg, k.dim, 0.3f);
+			break;
+		}
+		case MARK_ENVELOPE: {  // an attack/decay envelope, as on the Piqued screen
+			nvgBeginPath(vg);
+			nvgMoveTo(vg, x0, y0 + h);
+			nvgLineTo(vg, x0 + w * 0.22f, y0 + h);
+			nvgLineTo(vg, x0 + w * 0.36f, y0);
+			for (int i = 1; i <= 40; i++) {
+				float u = i / 40.f;
+				nvgLineTo(vg, x0 + w * (0.36f + 0.5f * u), y0 + h * (1.f - std::exp(-4.5f * u)));
+			}
+			nvgLineTo(vg, x1, y0 + h);
+			strokePath(vg, k.red, 0.65f);
+			break;
+		}
+		case MARK_SAWS: {  // three detuned saws, one in red
+			for (int s = 2; s >= 0; s--) {
+				float period = w / (3.f + 0.35f * s), off = s * w * 0.06f;
+				nvgBeginPath(vg);
+				nvgMoveTo(vg, x0, y0 + h);
+				for (float x = x0 - off; x < x1; x += period) {
+					float xa = std::max(x0, x), xb = std::min(x1, x + period);
+					float ya = y0 + h * (x >= x0 ? 1.f : 1.f - (x0 - x) / period);
+					nvgLineTo(vg, xa, ya);
+					nvgLineTo(vg, xb, y0 + h * (1.f - (xb - x) / period));
+				}
+				strokePath(vg, s == 0 ? k.red : (s == 1 ? k.fg : k.dim), 0.5f);
+			}
+			break;
+		}
+		case MARK_DOTS: {  // a line with notes on it, the middle one red
+			nvgBeginPath(vg);
+			nvgMoveTo(vg, x0, y0 + h * 0.5f);
+			nvgLineTo(vg, x1, y0 + h * 0.5f);
+			strokePath(vg, k.dim, 0.3f);
+			for (int i = 0; i < 5; i++) {
+				nvgBeginPath(vg);
+				nvgCircle(vg, x0 + w * (0.1f + 0.2f * i), y0 + h * 0.5f, h * 0.32f);
+				nvgFillColor(vg, i == 2 ? k.red : k.fg);
+				nvgFill(vg);
+			}
+			break;
+		}
+		case MARK_OCTOPUS: {  // a head and eight arms, one in red
+			float cx = (x0 + x1) / 2, r = h * 0.42f;
+			nvgBeginPath(vg);
+			nvgArc(vg, cx, y0 + r, r, M_PI, 0.f, NVG_CW);
+			nvgClosePath(vg);
+			nvgFillColor(vg, k.fg);
+			nvgFill(vg);
+			for (int i = 0; i < 8; i++) {
+				float x = cx - r + (2.f * r) * (i + 0.5f) / 8.f;
+				nvgBeginPath(vg);
+				nvgMoveTo(vg, x, y0 + r + h * 0.08f);
+				nvgLineTo(vg, x, y0 + h * (i % 2 ? 0.95f : 0.82f));
+				strokePath(vg, i == 5 ? k.red : k.fg, 0.5f);
+			}
+			break;
+		}
+		case MARK_DELTA:
+		case MARK_BAR:
+		default: {
+			nvgBeginPath(vg);
+			nvgRect(vg, x0, y0, w, px(0.7f));
+			nvgFillColor(vg, k.red);
+			nvgFill(vg);
+			break;
+		}
+	}
+}
+
+/** Module logo at the top: the name in stencil type with the module's mark under it (or a red delta
+beside it). MARK_BAR is the plain short red bar. */
+inline void nameplate(NVGcontext* vg, float cxMm, float yMm, const char* name, int fontHandle, const Ink& k, float sizeMm,
+                      Mark mark = MARK_BAR, float markWMm = 0.f, float markHMm = 0.f) {
 	nvgFontFaceId(vg, fontHandle);
 	nvgFontSize(vg, px(sizeMm));
 	nvgTextLetterSpacing(vg, px(sizeMm * 0.08f));
-	label(vg, Vec(cxMm, yMm), name, k.fg);
+	float tw = nvgTextBounds(vg, 0, 0, name, NULL, NULL);
+	float shift = mark == MARK_DELTA ? px(sizeMm * 0.45f) : 0.f;  // make room for the delta
+	label(vg, Vec(cxMm - shift / mm2px(1.f), yMm), name, k.fg);
 	nvgTextLetterSpacing(vg, 0.f);
-	float w = std::min(px(sizeMm * 2.4f), nvgTextBounds(vg, 0, 0, name, NULL, NULL));
-	nvgBeginPath(vg);
-	nvgRect(vg, px(cxMm) - w / 2, px(yMm + sizeMm * 0.62f), w, px(0.7f));
-	nvgFillColor(vg, k.red);
-	nvgFill(vg);
+	if (mark == MARK_DELTA) {
+		float x = px(cxMm) - shift + tw / 2 + px(sizeMm * 0.2f), s = px(sizeMm * 0.62f), yb = px(yMm + sizeMm * 0.34f);
+		nvgBeginPath(vg);
+		nvgMoveTo(vg, x, yb);
+		nvgLineTo(vg, x + s * 0.6f, yb - s);
+		nvgLineTo(vg, x + s * 1.2f, yb);
+		nvgClosePath(vg);
+		nvgFillColor(vg, k.red);
+		nvgFill(vg);
+		return;
+	}
+	if (mark == MARK_NONE)
+		return;
+	float w = mark == MARK_BAR ? std::min(px(sizeMm * 2.4f), tw) : tw;
+	if (mark == MARK_OCTOPUS)
+		w = px(sizeMm * 1.6f);
+	float h = px(sizeMm * (mark == MARK_BAR ? 0.2f : (mark == MARK_OCTOPUS ? 1.0f : 0.55f)));
+	if (markWMm > 0.f)
+		w = px(markWMm);
+	if (markHMm > 0.f)
+		h = px(markHMm);
+	drawMark(vg, mark, px(cxMm) - w / 2, px(cxMm) + w / 2, px(yMm + sizeMm * 0.6f), h, k);
 }
 
 }  // namespace bb

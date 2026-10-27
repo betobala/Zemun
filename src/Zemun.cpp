@@ -188,7 +188,7 @@ struct PanelArt : Widget {
 		std::shared_ptr<window::Font> bold = pluginFont("BebasNeue-Regular.ttf");
 		if (!stencil || !reg || !bold)
 			return;
-		bb::nameplate(vg, CX, 4.4f, "ZEMUN", stencil->handle, k, 4.6f);
+		bb::nameplate(vg, CX, 4.4f, "ZEMUN", stencil->handle, k, 4.6f, bb::MARK_PEAKS, 22.0f, 4.0f);
 		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
 
 		// scale numbers in grey
