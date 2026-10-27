@@ -7,3 +7,14 @@ plugin.dylib
 *.o
 *.exe
 *.d
+
+# third-party documents (manuals, product photos) are not redistributed
+docs/manual.pdf
+docs/manual.txt
+docs/*-manual.pdf
+docs/*-manual.txt
+docs/page*.png
+docs/panel_fig.png
+docs/manual_pages/
+docs/art/source/refs/
+samples/

@@ -1,5 +1,5 @@
 #pragma once
-// Panel controls in the graphic language of docs/art/components_4ms.png:
+// Panel controls in the graphic language of docs/art/components.png:
 //  - Knob: matte black disc, faint scalloped edge, one white pointer, ring of thick dashes around it
 //  - Jack: concentric rings (bevel, white ring, dark ring, black hole)
 //  - Button: flat disc with a thick outline that fills with the accent colour when lit

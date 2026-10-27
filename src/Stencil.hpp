@@ -3,7 +3,7 @@
 // white only, chamfered frames with thick strokes, solid label plates, hazard stripes, rows of
 // cartridges. Shared by every betobullet plugin; each copy is identical.
 #include <rack.hpp>
-#include "Controls4ms.hpp"
+#include "Controls.hpp"
 
 namespace bb {
 using namespace rack;
