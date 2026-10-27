@@ -140,7 +140,7 @@ static Vec polar(Vec c, float angle, float r) {
 }
 
 // ---------------------------------------------------------------- widgets
-/** Panel background, frames, scales and every label. Drawn in code so the theme can change. */
+/** Clean panel: black, white labels, grey scales, one rule over the jacks, red marks the output. */
 struct PanelArt : Widget {
 	Zemun* module = nullptr;
 
@@ -150,27 +150,21 @@ struct PanelArt : Widget {
 
 	void draw(const DrawArgs& args) override {
 		bb::Ink k = bb::ink(module ? module->theme : 0);
-		bb::Ink inv = {k.fg, k.bg};
 		NVGcontext* vg = args.vg;
 		nvgBeginPath(vg);
 		nvgRect(vg, 0, 0, box.size.x, box.size.y);
 		nvgFillColor(vg, k.bg);
 		nvgFill(vg);
 
-		// the frequency knob in brackets, the jack field framed, the output on a solid plate
-		bb::bracketFrame(vg, Rect(FREQ_POS.minus(Vec(FREQ_R + 7.6f, FREQ_R + 7.6f)), Vec(2 * FREQ_R + 15.2f, 2 * FREQ_R + 19.4f)), k, 3.0f);
-		bb::notchedFrame(vg, Rect(Vec(2.4f, 95.2f), Vec(W - 4.8f, 26.6f)), k);
-		bb::chamferPath(vg, Rect(Vec(42.2f, 107.6f), Vec(14.0f, 13.4f)), 1.8f);
-		nvgFillColor(vg, k.fg);
-		nvgFill(vg);
-		bb::bullets(vg, 19.0f, 52.1f, 93.6f, 2.0f, 9, k);
+		bb::rule(vg, 4.0f, W - 4.0f, 95.6f, k);
+		bb::outRing(vg, OUT_POS, k);
 
 		// position dots of the mode switch
 		for (int i = 0; i < zemun::NUM_MODES; i++) {
 			Vec d = polar(MODE_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 9.f, MODE_R + 2.0f);
 			nvgBeginPath(vg);
-			nvgRect(vg, mm2px(d.x - 0.45f), mm2px(d.y - 0.45f), mm2px(0.9f), mm2px(0.9f));
-			nvgFillColor(vg, k.fg);
+			nvgCircle(vg, mm2px(d.x), mm2px(d.y), mm2px(0.4f));
+			nvgFillColor(vg, k.dim);
 			nvgFill(vg);
 		}
 
@@ -182,9 +176,9 @@ struct PanelArt : Widget {
 				float y = SLIDER_BOTTOM - 2.4f - (SLIDER_BOTTOM - SLIDER_TOP - 4.8f) * i / 10.f;
 				nvgBeginPath(vg);
 				nvgMoveTo(vg, mm2px(x + side * 3.4f), mm2px(y));
-				nvgLineTo(vg, mm2px(x + side * (i % 2 == 0 ? 4.8f : 4.0f)), mm2px(y));
-				nvgStrokeColor(vg, k.fg);
-				nvgStrokeWidth(vg, mm2px(i % 5 == 0 ? 0.45f : 0.28f));
+				nvgLineTo(vg, mm2px(x + side * (i % 2 == 0 ? 4.6f : 4.0f)), mm2px(y));
+				nvgStrokeColor(vg, k.dim);
+				nvgStrokeWidth(vg, mm2px(0.25f));
 				nvgStroke(vg);
 			}
 		}
@@ -194,13 +188,13 @@ struct PanelArt : Widget {
 		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
 		if (!stencil || !reg || !bold)
 			return;
-		bb::title(vg, Rect(Vec(14.0f, 1.4f), Vec(W - 28.0f, 6.4f)), "ZEMUN", stencil->handle, k, 4.8f);
+		bb::nameplate(vg, CX, 4.4f, "ZEMUN", stencil->handle, k, 4.6f);
 		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-		nvgFillColor(vg, k.fg);
 
-		// slider numbers and the numbers around the frequency knob
+		// scale numbers in grey
 		nvgFontFaceId(vg, reg->handle);
 		nvgFontSize(vg, mm2px(2.2f));
+		nvgFillColor(vg, k.dim);
 		for (int s = 0; s < 2; s++) {
 			float x = s == 0 ? FM_SLIDER_X - 6.4f : SPAN_SLIDER_X + 6.4f;
 			for (int i = 0; i <= 10; i += 2) {
@@ -217,34 +211,34 @@ struct PanelArt : Widget {
 		// mode names
 		nvgFontFaceId(vg, bold->handle);
 		nvgFontSize(vg, mm2px(2.6f));
+		nvgFillColor(vg, k.fg);
 		for (int i = 0; i < zemun::NUM_MODES; i++) {
 			Vec p = polar(MODE_POS, MIN_ANGLE + i * (MAX_ANGLE - MIN_ANGLE) / 9.f, MODE_R + 5.6f);
 			text(vg, p, zemun::MODE_NAMES[i]);
 		}
 
-		// knob and jack labels on stencil plates
-		nvgFontFaceId(vg, stencil->handle);
+		// labels
+		nvgFontSize(vg, mm2px(2.7f));
+		nvgTextLetterSpacing(vg, mm2px(0.1f));
+		bb::label(vg, Vec(LEVEL_POS.x, 31.0f), "LEVEL", k.fg);
+		bb::label(vg, Vec(SPAN_POS.x, 31.0f), "SPAN", k.fg);
+		bb::label(vg, Vec(RESO_POS.x, 68.0f), "RESO", k.fg);
+		bb::label(vg, Vec(BAL_POS.x, 68.0f), "BALANCE", k.fg);
+		bb::label(vg, Vec(FREQ_POS.x, 56.6f), "FREQ", k.fg);
+		bb::label(vg, Vec(MODE_POS.x, 87.4f), "MODE", k.fg);
+		bb::label(vg, Vec(TITO_POS.x, 38.0f), "TITO", k.fg);
 		nvgFontSize(vg, mm2px(2.4f));
-		nvgTextLetterSpacing(vg, mm2px(0.08f));
-		bb::plate(vg, Vec(LEVEL_POS.x, 31.0f), "LEVEL", k, 11.0f);
-		bb::plate(vg, Vec(SPAN_POS.x, 31.0f), "SPAN", k, 11.0f);
-		bb::plate(vg, Vec(RESO_POS.x, 68.0f), "RESO", k, 11.0f);
-		bb::plate(vg, Vec(BAL_POS.x, 68.0f), "BALANCE", k, 11.0f);
-		bb::plate(vg, Vec(RESO_IN.x, RESO_IN.y + 5.2f), "RESO", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(VOCT_IN.x, VOCT_IN.y + 5.2f), "V/OCT", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(BAL_IN.x, BAL_IN.y + 5.2f), "BAL", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(FM_IN.x, FM_IN.y + 5.2f), "FM", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(AUDIO_IN.x, AUDIO_IN.y + 5.2f), "INPUT", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(SPAN_IN.x, SPAN_IN.y + 5.2f), "SPAN", k, 9.0f, 2.8f);
-		bb::plate(vg, Vec(OUT_POS.x, OUT_POS.y + 5.2f), "OUTPUT", inv, 11.0f, 2.8f);
-		bb::plate(vg, Vec(TITO_POS.x, 38.0f), "TITO", k, 8.0f, 2.8f);
-		bb::plate(vg, Vec(FREQ_POS.x, 56.6f), "FREQ", k, 12.0f, 3.4f);
-		bb::plate(vg, Vec(MODE_POS.x, 87.4f), "MODE", k, 12.0f, 3.4f);
+		bb::label(vg, Vec(RESO_IN.x, RESO_IN.y + 5.2f), "RESO", k.fg);
+		bb::label(vg, Vec(VOCT_IN.x, VOCT_IN.y + 5.2f), "V/OCT", k.fg);
+		bb::label(vg, Vec(BAL_IN.x, BAL_IN.y + 5.2f), "BAL", k.fg);
+		bb::label(vg, Vec(FM_IN.x, FM_IN.y + 5.2f), "FM", k.fg);
+		bb::label(vg, Vec(AUDIO_IN.x, AUDIO_IN.y + 5.2f), "INPUT", k.fg);
+		bb::label(vg, Vec(SPAN_IN.x, SPAN_IN.y + 5.2f), "SPAN", k.fg);
+		bb::label(vg, Vec(OUT_POS.x, OUT_POS.y + 6.0f), "OUTPUT", k.red);
 		nvgTextLetterSpacing(vg, 0.f);
 
-		nvgFontFaceId(vg, bold->handle);
-		nvgFontSize(vg, mm2px(2.4f));
-		nvgFillColor(vg, k.fg);
+		nvgFontSize(vg, mm2px(2.3f));
+		nvgFillColor(vg, k.dim);
 		nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
 		text(vg, Vec(TITO_POS.x + 4.4f, TITO_POS.y - 2.6f), "SM");
 		text(vg, Vec(TITO_POS.x + 4.4f, TITO_POS.y + 2.6f), "XM");

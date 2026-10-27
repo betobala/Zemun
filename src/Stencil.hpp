@@ -1,7 +1,7 @@
 #pragma once
-// betobullet panel language ("stencil", docs/art/source/brand_v1/bb_stencil__v1.png): black and
-// white only, chamfered frames with thick strokes, solid label plates, hazard stripes, rows of
-// cartridges. Shared by every betobullet plugin; each copy is identical.
+// betobullet panel language. The "clean" set (label, rule, outRing, nameplate) is the current look:
+// black panel, white text, thin rules, red only for outputs and lit things. The stencil helpers
+// (frames, plates, hazard, bullets) are kept for reference. Shared by every betobullet plugin.
 #include <rack.hpp>
 #include "Controls.hpp"
 
@@ -11,6 +11,7 @@ using namespace rack;
 /** The two inks of a theme: 0 = black panel (main), 1 = white panel (inverse). */
 struct Ink {
 	NVGcolor bg, fg;
+	NVGcolor red, dim;  // the accent; secondary text and rules
 };
 
 inline Ink ink(int theme) {
@@ -18,10 +19,14 @@ inline Ink ink(int theme) {
 	if (theme == 1) {
 		k.bg = nvgRGB(0xF1, 0xF1, 0xEE);
 		k.fg = nvgRGB(0x0B, 0x0B, 0x0B);
+		k.red = nvgRGB(0xD0, 0x1E, 0x25);
+		k.dim = nvgRGB(0x8C, 0x8C, 0x8A);
 	}
 	else {
-		k.bg = nvgRGB(0x0B, 0x0B, 0x0B);
+		k.bg = nvgRGB(0x0E, 0x0E, 0x0E);
 		k.fg = nvgRGB(0xF1, 0xF1, 0xEE);
+		k.red = nvgRGB(0xE8, 0x2A, 0x2F);
+		k.dim = nvgRGB(0x5E, 0x5E, 0x5C);
 	}
 	return k;
 }
@@ -149,9 +154,9 @@ inline void bullets(NVGcontext* vg, float x0, float x1, float baseMm, float h, i
 inline fms::Colors controlColors(int theme) {
 	Ink k = ink(theme);
 	fms::Colors c = {
-		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x30, 0x30, 0x30), nvgRGB(0xF4, 0xF4, 0xF2), k.fg,
+		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x30, 0x30, 0x30), nvgRGB(0xF4, 0xF4, 0xF2), k.dim,
 		nvgRGB(0xB8, 0xB8, 0xB6), nvgRGB(0xE4, 0xE4, 0xE2), nvgRGB(0x50, 0x50, 0x50), nvgRGB(0x1C, 0x1C, 0x1C), nvgRGB(0x04, 0x04, 0x04),
-		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x34, 0x34, 0x34), nvgRGB(0xF4, 0xF4, 0xF2), nvgRGB(0xFF, 0xFF, 0xFF), k.fg,
+		nvgRGB(0x14, 0x14, 0x14), nvgRGB(0x34, 0x34, 0x34), k.red, nvgRGB(0xFF, 0x6A, 0x6E), k.dim,
 		nvgRGB(0xF4, 0xF4, 0xF2)};
 	return c;
 }
@@ -176,6 +181,47 @@ inline void title(NVGcontext* vg, Rect mm, const char* name, int fontHandle, con
 	nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
 	nvgText(vg, px(mm.pos.x + mm.size.x / 2), px(mm.pos.y + mm.size.y / 2) + px(sizeMm * 0.04f), name, NULL);
 	nvgTextLetterSpacing(vg, 0.f);
+}
+
+// ---------------------------------------------------------------- clean set
+/** Plain label: centred text in the given colour (current font and size). */
+inline void label(NVGcontext* vg, Vec mm, const char* s, NVGcolor c) {
+	nvgFillColor(vg, c);
+	nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+	nvgText(vg, px(mm.x), px(mm.y), s, NULL);
+}
+
+/** Thin horizontal rule between sections. */
+inline void rule(NVGcontext* vg, float x0, float x1, float yMm, const Ink& k) {
+	nvgBeginPath(vg);
+	nvgMoveTo(vg, px(x0), px(yMm));
+	nvgLineTo(vg, px(x1), px(yMm));
+	nvgStrokeColor(vg, k.dim);
+	nvgStrokeWidth(vg, px(0.25f));
+	nvgStroke(vg);
+}
+
+/** Red ring around an output jack, so outputs read at a glance. */
+inline void outRing(NVGcontext* vg, Vec mm, const Ink& k, float r = 4.3f) {
+	nvgBeginPath(vg);
+	nvgCircle(vg, px(mm.x), px(mm.y), px(r));
+	nvgStrokeColor(vg, k.red);
+	nvgStrokeWidth(vg, px(0.55f));
+	nvgStroke(vg);
+}
+
+/** Module name at the top: stencil type, with a short red bar under it. */
+inline void nameplate(NVGcontext* vg, float cxMm, float yMm, const char* name, int fontHandle, const Ink& k, float sizeMm) {
+	nvgFontFaceId(vg, fontHandle);
+	nvgFontSize(vg, px(sizeMm));
+	nvgTextLetterSpacing(vg, px(sizeMm * 0.08f));
+	label(vg, Vec(cxMm, yMm), name, k.fg);
+	nvgTextLetterSpacing(vg, 0.f);
+	float w = std::min(px(sizeMm * 2.4f), nvgTextBounds(vg, 0, 0, name, NULL, NULL));
+	nvgBeginPath(vg);
+	nvgRect(vg, px(cxMm) - w / 2, px(yMm + sizeMm * 0.62f), w, px(0.7f));
+	nvgFillColor(vg, k.red);
+	nvgFill(vg);
 }
 
 }  // namespace bb
